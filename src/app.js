@@ -6,7 +6,7 @@ import cors from "cors";
 import http from "http";
 import { fileURLToPath } from "url";
 import path from "path";
-import { initSocket } from "./config/Socket.js";
+import { initSocket } from "./config/socket.js";
 const app = express();
 const server = http.createServer(app);
 initSocket(server);
