@@ -8,6 +8,7 @@ import { LoginValidator, registerValidator } from "../Middlewares/rules/auth.rul
 import { conversationValidator, sendMessageValidator } from "../Middlewares/rules/message.rule.js";
 import { ContactController } from "../Controllers/ContactController.js";
 import { ContactValidator } from "../Middlewares/rules/contact.rule.js";
+import { UserController } from "../Controllers/UserController.js";
 const router = express();
 
 
@@ -29,6 +30,8 @@ router.post("/messages/seen",MessageServices.messageSeen);
 
 // status routes here
 router.post("/status-upload",upload,StatusServices.statusUpload);
+
+route.get("/user-search", UserController.search);
 
 
 export default router;      
