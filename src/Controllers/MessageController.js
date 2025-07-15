@@ -52,13 +52,13 @@ export const MessageServices = {
         const uploadedPaths = [];
         for (const file of attachments) {
           const imagePath = await uploadFile(
-        file,
-        process.env.CHAT_ATTACHMENTS
+            file,
+            process.env.CHAT_ATTACHMENTS
           );
           if (!imagePath) {
-        return ResponseBuilder.error("Image upload failed", 500, []).build(
-          resp
-        );
+            return ResponseBuilder.error("Image upload failed", 500, []).build(
+              resp
+            );
           }
           uploadedPaths.push(imagePath);
         }
@@ -101,16 +101,15 @@ export const MessageServices = {
         message: msg.message,
         createdAt: msg.createdAt,
         seen: msg.seen,
-        attachments:
-        createFileUrl(
-        process.env.CHAT_ATTACHMENTS,
-        msg.attachments
-      ),
+        attachments: createFileUrl(
+          process.env.CHAT_ATTACHMENTS,
+          msg.attachments
+        ),
         fromSelf: msg.sender._id.toString() === req.user.id,
       }));
 
       if (!formattedMessages || formattedMessages.length === 0) {
-        return ResponseBuilder.error("conversation not found", 400, []).build(
+        return ResponseBuilder.success([], "conversation not found", 200).build(
           resp
         );
       }
@@ -126,14 +125,67 @@ export const MessageServices = {
 
   chatList: async (req, resp) => {
     try {
-      const userList = await User.find({}, { name: 1, email: 1, _id: 1 });
+      const userList = await User.find(
+        { _id: { $ne: req.user._id } },
+        { name: 1, email: 1, _id: 1 }
+      );
 
-      if (!userList.length) {
+      const chatUsers = await Message.aggregate([
+        {
+          // Only messages where I'm either sender or receiver
+          $match: {
+            $or: [{ sender: req.user._id }, { receiver: req.user._id }],
+          },
+        },
+        {
+          // Determine who is the "other user" in each message
+          $project: {
+            otherUser: {
+              $cond: [
+                { $eq: ["$sender", req.user._id] },
+                "$receiver",
+                "$sender",
+              ],
+            },
+          },
+        },
+        {
+          // Group by otherUser to get unique users
+          $group: {
+            _id: "$otherUser",
+          },
+        },
+        {
+          // Optionally, lookup user details
+          $lookup: {
+            from: "users",
+            localField: "_id",
+            foreignField: "_id",
+            as: "user",
+          },
+        },
+        {
+          // Flatten the user array
+          $unwind: "$user",
+        },
+        {
+          // Optionally, project just what you need
+          $project: {
+            _id: 0,
+            _id: "$user._id",
+            name: "$user.name",
+            email: "$user.email",
+          },
+        },
+      ]);
+
+
+      if (!chatUsers.length) {
         return resp.status(200).json({ message: "No users found" });
       }
 
       return ResponseBuilder.success(
-        userList,
+        chatUsers,
         Lang.SUCCESS.CHAT_LIST,
         200
       ).build(resp);
