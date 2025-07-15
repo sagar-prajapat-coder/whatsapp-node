@@ -31,7 +31,7 @@ router.post("/messages/seen",MessageServices.messageSeen);
 // status routes here
 router.post("/status-upload",upload,StatusServices.statusUpload);
 
-route.get("/user-search", UserController.search);
+router.get("/user-search", UserController.search);
 
 
 export default router;      
