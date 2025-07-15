@@ -4,14 +4,14 @@ import ResponseBuilder from "../utils/ResponseBuilder.js";
 
 export const UserController = {
     search: async (req, res) => {
-        const { query } = req.query;
-        if (!query) {
+        const { search } = req.query;
+        if (!search) {
             return ResponseBuilder.error("Query parameter is required", 400).build(res);
         }
 
         try {
             const users = await User.find({
-                name: { $regex: query, $options: "i" },
+                name: { $regex: search, $options: "i" },
             }).select("_id name");
 
             return ResponseBuilder.success(users, "User found", 200).build(res);
