@@ -1,4 +1,4 @@
-import { errorHandler } from "../Middlewares/rules/errorhandler";
+import { errorHandler } from "../Middlewares/rules/errorhandler.js";
 import User from "../Model/User.js";
 import ResponseBuilder from "../utils/ResponseBuilder.js";
 
