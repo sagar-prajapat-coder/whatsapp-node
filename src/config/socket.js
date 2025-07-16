@@ -14,15 +14,20 @@ export const initSocket = (httpServer) => {
   io.on("connection", (socket) => {
     console.log("🟢 User connected:", socket.id);
 
-    // User joins their personal room
     socket.on("join", (userId) => {
       socket.join(userId);
-      onlineUsers.set(userId, socket.id);
+
+      // Add this socket to the user's set of sockets
+      if (!onlineUsers.has(userId)) {
+        onlineUsers.set(userId, new Set());
+        // Notify others this user came online
+        socket.broadcast.emit("userOnline", userId);
+      }
+      onlineUsers.get(userId).add(socket.id);
+
       console.log(`${userId} joined their personal room`);
-      socket.broadcast.emit("userOnline", userId);
     });
 
-    // Send message with attachments support
     socket.on("sendMessage", ({ sender, receiver, message, attachments }) => {
       console.log(
         `📤 ${sender} → ${receiver}: ${message || "[No text]"} ${
@@ -30,7 +35,6 @@ export const initSocket = (httpServer) => {
         }`
       );
 
-      // Emit to receiver
       io.to(receiver).emit("receiveMessage", {
         message,
         attachments,
@@ -40,7 +44,6 @@ export const initSocket = (httpServer) => {
         createdAt: new Date(),
       });
 
-      // Optionally emit back to sender
       socket.emit("receiveMessage", {
         message,
         attachments,
@@ -50,14 +53,12 @@ export const initSocket = (httpServer) => {
         createdAt: new Date(),
       });
     });
- 
-    // Seen status
+
     socket.on("messagesSeen", ({ sender, receiver }) => {
       io.to(sender).emit("updateSeenStatus", { from: receiver });
       console.log(`👁️‍🗨️ Seen sent to ${sender} from ${receiver}`);
     });
 
-    // Typing indicators
     socket.on("typing", ({ sender, receiver }) => {
       io.to(receiver).emit("userTyping", { from: sender });
     });
@@ -66,18 +67,21 @@ export const initSocket = (httpServer) => {
       io.to(receiver).emit("userStoppedTyping", { from: sender });
     });
 
-    // Disconnect
     socket.on("disconnect", () => {
       console.log("🔴 User disconnected:", socket.id);
 
-      // Find which user ID this socket belonged to
-      const userId = [...onlineUsers.entries()].find(
-        ([, socketId]) => socketId === socket.id
-      )?.[0];
+      // Remove this socket from all users' socket sets
+      for (const [userId, socketSet] of onlineUsers.entries()) {
+        if (socketSet.has(socket.id)) {
+          socketSet.delete(socket.id);
 
-      if (userId) {
-        onlineUsers.delete(userId);
-        socket.broadcast.emit("userOffline", userId);
+          // If no sockets left for this user, they're offline
+          if (socketSet.size === 0) {
+            onlineUsers.delete(userId);
+            socket.broadcast.emit("userOffline", userId);
+          }
+          break; // done
+        }
       }
     });
   });
