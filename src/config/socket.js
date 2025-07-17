@@ -66,20 +66,6 @@ export const initSocket = (httpServer) => {
     socket.on("stopTyping", ({ sender, receiver }) => {
       io.to(receiver).emit("userStoppedTyping", { from: sender });
     });
-
-    // webrtc
-      socket.on("call-user", ({ userToCall, offer, from, type }) => {
-        io.to(userToCall).emit("call-made", { offer, from, type });
-      });
-
-      socket.on("make-answer", ({ answer, to }) => {
-        io.to(to).emit("answer-made", { answer, from: socket.id });
-      });
-
-      socket.on("ice-candidate", ({ candidate, to }) => {
-        io.to(to).emit("ice-candidate", { candidate, from: socket.id });
-      });
-
       socket.on("disconnect", () => {
         console.log("🔴 User disconnected:", socket.id);
 
