@@ -67,29 +67,42 @@ export const initSocket = (httpServer) => {
       io.to(receiver).emit("userStoppedTyping", { from: sender });
     });
 
-    socket.on("disconnect", () => {
-      console.log("🔴 User disconnected:", socket.id);
+    // webrtc
+      socket.on("call-user", ({ userToCall, offer, from, type }) => {
+        io.to(userToCall).emit("call-made", { offer, from, type });
+      });
 
-      // Remove this socket from all users' socket sets
-      for (const [userId, socketSet] of onlineUsers.entries()) {
-        if (socketSet.has(socket.id)) {
-          socketSet.delete(socket.id);
+      socket.on("make-answer", ({ answer, to }) => {
+        io.to(to).emit("answer-made", { answer, from: socket.id });
+      });
 
-          // If no sockets left for this user, they're offline
-          if (socketSet.size === 0) {
-            onlineUsers.delete(userId);
-            socket.broadcast.emit("userOffline", userId);
+      socket.on("ice-candidate", ({ candidate, to }) => {
+        io.to(to).emit("ice-candidate", { candidate, from: socket.id });
+      });
+
+      socket.on("disconnect", () => {
+        console.log("🔴 User disconnected:", socket.id);
+
+        // Remove this socket from all users' socket sets
+        for (const [userId, socketSet] of onlineUsers.entries()) {
+          if (socketSet.has(socket.id)) {
+            socketSet.delete(socket.id);
+
+            // If no sockets left for this user, they're offline
+            if (socketSet.size === 0) {
+              onlineUsers.delete(userId);
+              socket.broadcast.emit("userOffline", userId);
+            }
+            break; // done
           }
-          break; // done
         }
-      }
+      });
     });
-  });
-};
+  };
 
-export const getIO = () => {
-  if (!io) throw new Error("Socket.io not initialized");
-  return io;
-};
+  export const getIO = () => {
+    if (!io) throw new Error("Socket.io not initialized");
+    return io;
+  };
 
-export const getOnlineUsers = () => onlineUsers;
+  export const getOnlineUsers = () => onlineUsers;
